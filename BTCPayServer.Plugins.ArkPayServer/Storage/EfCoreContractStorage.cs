@@ -42,7 +42,7 @@ public class EfCoreContractStorage : IContractStorage
 
         var query = db.WalletContracts.Where(c => c.Active);
 
-        if (walletIdentifiers != null && walletIdentifiers.Count > 0)
+        if (walletIdentifiers is { Count: > 0 })
         {
             var walletSet = walletIdentifiers.ToHashSet();
             query = query.Where(c => walletSet.Contains(c.WalletId));
@@ -237,32 +237,6 @@ public class EfCoreContractStorage : IContractStorage
     }
 
     /// <summary>
-    /// Upserts a contract.
-    /// </summary>
-    public async Task<bool> UpsertContractAsync(
-        ArkWalletContract contract,
-        CancellationToken cancellationToken = default)
-    {
-        await using var db = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
-
-        var existing = await db.WalletContracts.FirstOrDefaultAsync(
-            c => c.Script == contract.Script && c.WalletId == contract.WalletId,
-            cancellationToken);
-
-        if (existing != null)
-        {
-            existing.Active = contract.Active;
-            existing.ContractData = contract.ContractData;
-        }
-        else
-        {
-            await db.WalletContracts.AddAsync(contract, cancellationToken);
-        }
-
-        return await db.SaveChangesAsync(cancellationToken) > 0;
-    }
-
-    /// <summary>
     /// Gets contracts with pagination and optional filtering.
     /// </summary>
     public async Task<IReadOnlyList<ArkWalletContract>> GetContractsWithPaginationAsync(
@@ -316,7 +290,7 @@ public class EfCoreContractStorage : IContractStorage
             ? db.WalletContracts.Include(c => c.Swaps)
             : db.WalletContracts.AsQueryable();
 
-        if (walletIds != null && walletIds.Length > 0)
+        if (walletIds is { Length: > 0 })
         {
             query = query.Where(c => walletIds.Contains(c.WalletId));
         }

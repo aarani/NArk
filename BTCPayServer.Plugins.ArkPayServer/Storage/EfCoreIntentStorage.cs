@@ -27,10 +27,9 @@ public class EfCoreIntentStorage : IIntentStorage
         await using var db = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
 
         // Try to find existing by InternalId (using Guid to int mapping)
-        var internalId = GuidToInt(intent.InternalId);
         var existing = await db.Intents
             .Include(i => i.IntentVtxos)
-            .FirstOrDefaultAsync(i => i.InternalId == internalId, cancellationToken);
+            .FirstOrDefaultAsync(i => i.InternalId == intent.InternalId, cancellationToken);
 
         if (existing != null)
         {
@@ -54,6 +53,7 @@ public class EfCoreIntentStorage : IIntentStorage
         {
             var entity = new PluginArkIntent
             {
+                InternalId = intent.InternalId,
                 IntentId = intent.IntentId,
                 WalletId = intent.WalletId,
                 State = intent.State,
@@ -104,10 +104,9 @@ public class EfCoreIntentStorage : IIntentStorage
     {
         await using var db = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
 
-        var id = GuidToInt(internalId);
         var entity = await db.Intents
             .Include(i => i.IntentVtxos)
-            .FirstOrDefaultAsync(i => i.InternalId == id, cancellationToken);
+            .FirstOrDefaultAsync(i => i.InternalId == internalId, cancellationToken);
 
         return entity == null ? null : MapToNNarkIntent(entity);
     }
@@ -199,7 +198,7 @@ public class EfCoreIntentStorage : IIntentStorage
     private NNarkArkIntent MapToNNarkIntent(PluginArkIntent entity)
     {
         return new NNarkArkIntent(
-            InternalId: IntToGuid(entity.InternalId),
+            InternalId: entity.InternalId,
             IntentId: entity.IntentId,
             WalletId: entity.WalletId,
             State: entity.State,
@@ -221,34 +220,13 @@ public class EfCoreIntentStorage : IIntentStorage
         );
     }
 
-
-    /// <summary>
-    /// Convert int InternalId to Guid for NNark compatibility.
-    /// Uses a deterministic mapping.
-    /// </summary>
-    private static Guid IntToGuid(int id)
-    {
-        var bytes = new byte[16];
-        BitConverter.GetBytes(id).CopyTo(bytes, 0);
-        return new Guid(bytes);
-    }
-
-    /// <summary>
-    /// Convert Guid back to int InternalId.
-    /// </summary>
-    private static int GuidToInt(Guid guid)
-    {
-        var bytes = guid.ToByteArray();
-        return BitConverter.ToInt32(bytes, 0);
-    }
-
     #region Plugin-specific methods (wallet-guarded)
 
     /// <summary>
     /// Gets intent VTXOs grouped by intent InternalId.
     /// </summary>
-    public async Task<Dictionary<int, ArkIntentVtxo[]>> GetIntentVtxosByIntentIdsAsync(
-        IEnumerable<int> intentIds,
+    public async Task<Dictionary<Guid, ArkIntentVtxo[]>> GetIntentVtxosByIntentIdsAsync(
+        IEnumerable<Guid> intentIds,
         CancellationToken cancellationToken = default)
     {
         await using var db = await _dbContextFactory.CreateDbContextAsync(cancellationToken);

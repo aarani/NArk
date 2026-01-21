@@ -732,7 +732,7 @@ public class ArkController(
             stateFilter,
             HttpContext.RequestAborted);
 
-        var intentVtxos = new Dictionary<int, ArkIntentVtxo[]>();
+        var intentVtxos = new Dictionary<Guid, ArkIntentVtxo[]>();
         if (intents.Any())
         {
             var intentIds = intents.Select(i => i.InternalId);
